@@ -1,0 +1,2 @@
+# Only needed for "Import from MetaTrader 5" (Windows)
+MetaTrader5

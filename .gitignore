@@ -1,0 +1,4 @@
+# Your journal: trades, settings and screenshots stay on your computer
+data/
+__pycache__/
+*.db

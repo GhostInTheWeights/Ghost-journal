@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ghost Journal</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📓</text></svg>">
+<link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+<header id="top">
+  <div class="brand">📓 <b>Ghost Journal</b></div>
+  <nav id="tabs">
+    <button data-view="dashboard" class="active">Dashboard</button>
+    <button data-view="journal">Journal</button>
+    <button data-view="calendar">Calendar</button>
+    <button data-view="settings">Settings</button>
+  </nav>
+  <div class="grow"></div>
+  <div class="menu-wrap">
+    <button id="importBtn" class="btn ghost">Import ▾</button>
+    <div id="importMenu" class="menu hidden">
+      <button id="impMt5">From MetaTrader 5…</button>
+      <button id="impCsv">Ghost Charts backtest CSV…</button>
+      <a href="api/export.csv" download="ghost_journal_trades.csv">Export all trades (CSV)</a>
+    </div>
+    <input type="file" id="csvFile" accept=".csv" hidden>
+  </div>
+  <button id="newBtn" class="btn primary">+ New trade</button>
+</header>
+
+<section id="filters">
+  <label>Period
+    <select id="fPeriod">
+      <option value="all">All time</option>
+      <option value="week">This week</option>
+      <option value="month">This month</option>
+      <option value="30">Last 30 days</option>
+      <option value="90">Last 90 days</option>
+      <option value="year">This year</option>
+      <option value="custom">Custom…</option>
+    </select>
+  </label>
+  <span id="fCustom" class="hidden"><input type="date" id="fFrom"> – <input type="date" id="fTo"></span>
+  <label>Account <select id="fAccount"></select></label>
+  <label>Symbol <select id="fSymbol"></select></label>
+  <label>Setup <select id="fSetup"></select></label>
+  <label>Side <select id="fSide"><option value="">All</option><option value="buy">Long</option><option value="sell">Short</option></select></label>
+  <span id="fCount" class="muted"></span>
+</section>
+
+<main>
+  <section id="view-dashboard" class="view"></section>
+  <section id="view-journal" class="view hidden"></section>
+  <section id="view-calendar" class="view hidden"></section>
+  <section id="view-settings" class="view hidden"></section>
+</main>
+
+<div id="modal" class="modal hidden">
+  <form id="tradeForm" class="sheet" autocomplete="off">
+    <div class="sheet-head">
+      <h2 id="formTitle">New trade</h2>
+      <button type="button" class="x" data-close>✕</button>
+    </div>
+    <div class="form-grid">
+      <fieldset>
+        <legend>Trade</legend>
+        <label>Account <input name="account" list="accountList" placeholder="e.g. Live, Demo, Prop"></label>
+        <div class="row2">
+          <label>Symbol <input name="symbol" list="symbolList" required placeholder="XAUUSD"></label>
+          <label>Side <select name="side"><option value="buy">Long (buy)</option><option value="sell">Short (sell)</option></select></label>
+        </div>
+        <div class="row2">
+          <label>Opened <input type="datetime-local" name="open_time" required></label>
+          <label>Closed <input type="datetime-local" name="close_time"></label>
+        </div>
+        <div class="row3">
+          <label>Lots <input type="number" step="any" name="lots" required></label>
+          <label>Entry <input type="number" step="any" name="entry" required></label>
+          <label>Exit <input type="number" step="any" name="exit"></label>
+        </div>
+        <div class="row3">
+          <label>Stop loss <input type="number" step="any" name="sl"></label>
+          <label>Take profit <input type="number" step="any" name="tp"></label>
+          <label>Exit reason <select name="exit_reason"><option value="">—</option><option>TP</option><option>SL</option><option>Manual</option><option>Break-even</option><option>Time</option></select></label>
+        </div>
+        <div class="row3">
+          <label>P&amp;L <input type="number" step="any" name="pnl" placeholder="auto if blank"></label>
+          <label>Fees <input type="number" step="any" name="fees" placeholder="0"></label>
+          <label>Timeframe <select name="timeframe"><option value="">—</option><option>M1</option><option>M5</option><option>M15</option><option>M30</option><option>H1</option><option>H4</option><option>D1</option></select></label>
+        </div>
+        <p id="calcHint" class="hint"></p>
+      </fieldset>
+      <fieldset>
+        <legend>Review</legend>
+        <label>Setup <select name="setup" id="setupSel"></select></label>
+        <div class="row2">
+          <label>Feeling before <select name="emotion_before" class="emoSel"></select></label>
+          <label>Feeling after <select name="emotion_after" class="emoSel"></select></label>
+        </div>
+        <div class="field-label">Followed my plan?</div>
+        <div class="seg" id="planSeg">
+          <button type="button" data-v="yes">Yes</button><button type="button" data-v="partly">Partly</button><button type="button" data-v="no">No</button>
+        </div>
+        <div class="field-label">Mistakes</div>
+        <div id="mistakeChips" class="chips"></div>
+        <div class="field-label">Execution rating</div>
+        <div class="stars" id="stars"></div>
+        <label>Notes / lessons <textarea name="notes" rows="4" placeholder="Why did I take it? What would I do differently?"></textarea></label>
+      </fieldset>
+    </div>
+    <div class="field-label">Screenshots <span class="muted">— paste (Ctrl+V), drop, or</span>
+      <label class="link">choose files<input type="file" id="imgFile" accept="image/*" multiple hidden></label></div>
+    <div id="shots" class="shots"></div>
+    <div class="sheet-foot">
+      <button type="button" id="delBtn" class="btn danger">Delete</button>
+      <div class="grow"></div>
+      <button type="button" class="btn ghost" data-close>Cancel</button>
+      <button type="submit" class="btn primary">Save trade</button>
+    </div>
+  </form>
+</div>
+
+<div id="mt5Modal" class="modal hidden">
+  <div class="sheet small">
+    <div class="sheet-head"><h2>Import from MetaTrader 5</h2><button type="button" class="x" data-close>✕</button></div>
+    <p>Open MetaTrader 5 and log in to the account you want to import. Closed trades are added; ones already imported are skipped.</p>
+    <label>History to import
+      <select id="mt5Days"><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90" selected>Last 90 days</option><option value="365">Last year</option><option value="3650">Everything</option></select>
+    </label>
+    <p id="mt5Msg" class="hint"></p>
+    <div class="sheet-foot"><div class="grow"></div><button class="btn ghost" data-close>Close</button><button id="mt5Go" class="btn primary">Import</button></div>
+  </div>
+</div>
+
+<div id="lightbox" class="modal hidden"><img alt="Screenshot"></div>
+<datalist id="accountList"></datalist>
+<datalist id="symbolList"></datalist>
+<div id="toast" class="hidden"></div>
+<script src="app.js"></script>
+</body>
+</html>
